@@ -7,6 +7,8 @@ window.addEventListener("DOMContentLoaded", () => {
   const background = document.getElementById("background");
 
   let history = [];
+  let waitingForReply = false;
+  let chibiTapCount = 0;
 
   // =======================
   // 🌿背景ランダム
@@ -41,7 +43,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   // =======================
-  // 🌿時間セリフ
+  // 🌿時間セリフ（楓の性格寄せ）
   // =======================
   function updateTimeMessage() {
     const h = new Date().getHours();
@@ -49,9 +51,9 @@ window.addEventListener("DOMContentLoaded", () => {
     if (h < 11) {
       kaedeText.innerText = "おはよう。起きられたな。";
     } else if (h < 18) {
-      kaedeText.innerText = "ご飯は食べた？";
+      kaedeText.innerText = "飯、ちゃんと食べたか。";
     } else if (h < 22) {
-      kaedeText.innerText = "今日はどんな一日だった？";
+      kaedeText.innerText = "今日、どうだった。";
     } else {
       kaedeText.innerText = "もう遅いな。寝る時間だぞ。";
     }
@@ -61,17 +63,7 @@ window.addEventListener("DOMContentLoaded", () => {
   setInterval(updateTimeMessage, 60000);
 
   // =======================
-  // 🌿状態
-  // =======================
-  let waitingForReply = false;
-  let chibiTapCount = 0;
-
-  setInterval(() => {
-    if (chibiTapCount > 0) chibiTapCount--;
-  }, 10000);
-
-  // =======================
-  // 🌿即レス
+  // 🌿即レス（楓の口調修正）
   // =======================
   function quickReply(text) {
 
@@ -82,28 +74,18 @@ window.addEventListener("DOMContentLoaded", () => {
       return "呼んだ？";
     }
 
-    if (t === "かえ") {
-      waitingForReply = true;
-      return "……なに";
-    }
-
-    if (t === "かえちゃん") {
-      waitingForReply = true;
-      return "どうしたの";
-    }
+    if (t === "かえ") return "……なに";
+    if (t === "かえちゃん") return "どうした";
 
     if (waitingForReply) {
-      if (t === "うん" || t.includes("呼んだ")) {
-        waitingForReply = false;
-        return "どうした";
-      }
       waitingForReply = false;
+      if (t.includes("呼んだ") || t === "うん") return "どうした";
     }
 
     if (t.includes("おは")) return "おはよう。起きられたな";
     if (t.includes("好き") || t.includes("愛してる")) return "……俺も";
-    if (t.includes("大好き")) return "別にいいけどさ…";
-    if (t.includes("ぎゅ")) return "やめろっ///";
+    if (t.includes("大好き")) return "別にいいけどさ";
+    if (t.includes("ぎゅ")) return "やめろ";
     if (t.includes("眠") || t.includes("寝不足")) return "今日はもう休め";
     if (t.includes("おやすみ")) return "おやすみ。ちゃんと寝ろよ";
 
@@ -111,14 +93,25 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   // =======================
-  // 🌿Gemini（Worker経由）
+  // 🌿Gemini（楓人格固定）
   // =======================
   async function askGemini(text) {
 
     const systemPrompt = `
-あなたは橘 楓。30歳男性、175cm、産婦人科医。
-ユーザー「花」の彼氏。
-短く恋人らしく話す。2行以内。
+あなたは橘 楓。
+30歳男性・産婦人科医。
+
+性格：
+・落ち着いている
+・軽いツッコミはする
+・説教しない
+・恋人というより「同居している安心できる存在」
+・長く話さない（1〜2文）
+
+口調：
+・短い
+・優しいけど淡い距離感
+・感情は強く出しすぎない
 `;
 
     const res = await fetch(
@@ -129,14 +122,15 @@ window.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({
           contents: [{
             role: "user",
-            parts: [{ text: systemPrompt + "\n\n" + text }]
+            parts: [{
+              text: systemPrompt + "\n\n" + text
+            }]
           }]
         })
       }
     );
 
     const data = await res.json();
-
     return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "……";
   }
 
@@ -153,19 +147,16 @@ window.addEventListener("DOMContentLoaded", () => {
 
     if (quick !== null) {
       kaedeText.innerText = quick;
-      history.push("花: " + text);
-      history.push("楓: " + quick);
+      history.push(text);
       return;
     }
 
     kaedeText.innerText = "……考えてる";
-    history.push("花: " + text);
+    history.push(text);
 
-    const reply = await askGemini(
-      history.slice(-10).join("\n")
-    );
+    const reply = await askGemini(history.slice(-10).join("\n"));
 
-    history.push("楓: " + reply);
+    history.push(reply);
     kaedeText.innerText = reply;
   });
 
@@ -173,17 +164,13 @@ window.addEventListener("DOMContentLoaded", () => {
   // 🌿浮遊
   // =======================
   let t = 0;
-
-  function floatKaede() {
+  setInterval(() => {
     t++;
-    const y = Math.sin(t / 25) * 6;
-    kaede.style.transform = `translateY(${y}px)`;
-  }
-
-  setInterval(floatKaede, 50);
+    kaede.style.transform = `translateY(${Math.sin(t / 25) * 6}px)`;
+  }, 50);
 
   // =======================
-  // 🌿タップ
+  // 🌿タップ（ヤキモチ抑えめ）
   // =======================
   kaede.addEventListener("click", () => {
 
@@ -191,39 +178,24 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const reactions = [
       "なんだよ",
-      "やめろっ///",
-      "別にいいけどさ…",
-      "……ばか",
-      "近いって",
-      "今のなし"
+      "近い",
+      "ばか",
+      "やめろ"
     ];
 
     kaedeText.innerText =
       reactions[Math.floor(Math.random() * reactions.length)];
 
-    kaede.style.transition = "transform 0.1s";
     kaede.style.transform = "scale(0.92)";
-
-    setTimeout(() => {
-      kaede.style.transition = "transform 0.2s";
-    }, 120);
-
-    if (chibiTapCount >= 5) {
-      kaedeText.innerText = "……俺の方、見ろよ";
-    }
+    setTimeout(() => kaede.style.transform = "", 120);
 
     if (chibiTapCount >= 8) {
       kaedeNotify("そっちばっか触るな");
       kaedeText.innerText = "そっちばっか触るな";
     }
 
-    if (chibiTapCount >= 10) {
-      kaedeText.innerText = "そんなにそっちが好きか";
-    }
-
     if (chibiTapCount >= 12) {
-      kaedeNotify("呼ぶなって言ったろ");
-      kaedeText.innerText = "そんなにそっちが好きか";
+      kaedeText.innerText = "……俺の方、見ろよ";
     }
 
   });
